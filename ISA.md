@@ -19,7 +19,14 @@ This ISA is validated against 3 test programs: Fibonacci sequence generation, fa
 ## 2. Register File
 
 - **8 General-Purpose Registers:** R0 - R7, 3-bit register addressing
-- [TBD: special-purpose registers — program counter, stack pointer, flags register]
+
+### Special-purpose registers
+ 
+- **Program Counter (PC):** 16 bits wide — must be wider than the 8-bit general-purpose registers, since it needs to address the full 64KB memory space. Not part of the 8-register general-purpose file and not addressable by any instruction's register fields. It's updated implicitly by instruction fetch (PC += 2 each cycle, since instructions are 16 bits) and explicitly by jump-type instructions (Section 3).
+
+- **Flags/Status Register:** 4 bits (Z, N, C, V) - fully explained in Section 6. Also not part of the general-purpose register fil. Written implicitly by ADD/SUB/ADDI and read implicitly by conditional jump instructions (JEQ/JNE/JLT/JGE).
+
+- **Stack Pointer:** Not included as none of the three test programs (fibonacci, factorial, bubble sort) require function calls, subroutines, or nested returns as currently scoped. A stack pointer would be added if the ISA were extended to support subroutine calls.
 
 ### Rejected alternatives
 - **16 registers:** With a 3-operand R type format (destination, source1, source2), 16 registers require 4 bits x 3 = 12 bits for just the register fields. In conjunction with 5-bit opcodes, there would be 0 bits remaining for addressing modes or immediates, meaning instructions won't fit in the 16 bit budget. 8 registers require 3 bits x 3 = 9 bits, leaving space for opcode and other fields to comfortably fit.
@@ -30,7 +37,7 @@ This ISA is validated against 3 test programs: Fibonacci sequence generation, fa
 
 ## 3. Instruction Format
 
-Each instruction is 16 bits. The fields the non-opcode bits represents are dependent on the instruction type. First, the decoder reads the opcode to determine which of the 3 formats to interpret the rest oc the instruction as. This pattern occurs in real life ISAs, such as MIPS R-type/I-type/J-type (Register, Immediates, Jumps).
+Each instruction is 16 bits. The fields the non-opcode bits represents are dependent on the instruction type. First, the decoder reads the opcode to determine which of the 4 formats to interpret the rest oc the instruction as. This pattern occurs in real life ISAs, such as MIPS R-type/I-type/J-type (Register, Immediates, Jumps).
 
 ### R-type (register-direct ALU operations, e.g. ADD Rd, Rs1, Rs2)
 ```
@@ -152,7 +159,7 @@ Implemented internally as `Rs1 + (~Rs2 + 1)` meaning the addition of Rs1 and the
 
 ## 7. Design Decisions Log
 
-This is a running log of decisions in the order that they were made, with the alternative considered and the constraint that forced the choice. Relevant sections can be referred to fo more detailed reasoning. 
+This is a running log of decisions in the order that they were made, with the alternative considered and the constraint that forced the choice. Relevant sections can be referred to for more detailed reasoning. 
 
 1. **Fixed-length 16-bit instructions** used instead of variable-length: simpler to decode and more appropriate for first custom ISA. **(Section 1)**
 
@@ -174,7 +181,9 @@ This is a running log of decisions in the order that they were made, with the al
 
 10. **HALT and MOV treated as degenerate R-type instructions** rather than introducing a fourth zero/one-operand format: keeps the decoder handling only three instruction shapes. **(Section 5)**
 
-11. **Opcodes grouped by format** (`000xx`=R-type, `010xx`=I-type, `10xxx`= Indirect-type/branch) rather than assigned sequentially, so the opcode's high bits alone can indicate instruction format before full decode. **(Section 5)**
+11. **ADDI added late, after discovering the gap:** initial instruction list had no way to do register-immediate arithmetic (e.g. loop increment/decrement) or register-to-register copy (MOV). These are the most frequently executed operations across all three test programs (every loop iteration needs increment/decrement), so they were added once I realised they were required. **(Section 5)**
+
+12. **Opcodes grouped by format** (`000xx`= R-type, `010xx`= I-type, `10xxx`= Indirect-type/jump) rather than assigned sequentially, so the opcode's high bits alone can indicate instruction format before full decode. **(Section 5)**
 
 13. **Jump-type reuses I-type's physical layout** rather than a dedicated fourth format: same degenerate-reuse pattern as HALT/MOV, minimizes decoder complexity. **(Section 3)**
 
@@ -182,7 +191,9 @@ This is a running log of decisions in the order that they were made, with the al
 
 15. **JLT/JGE use the fully correct N XOR V signed-comparison test**, not the simpler N-alone approximation: chosen for correctness even though the current test programs' value ranges wouldn't have exposed the edge case where N alone gives a wrong answer **(Section 6)**
 
-16. **Only including the following 5 jump instructions - JMP, JEQ, JNE, JLT, JGE:** JLT andJGE are required by bubble sort's ordering comparison (`arr[i] > arr[i+1]`); JEQ/JNE cover equality-based loop termination; JMP is required for unconditional control transfer (such as skipping parts of an if-statement) that no conditional jump can express regardless of flag state. Additional conditions (JLE, JGT) were deliberately not added as no test program requires them. **(Section 5)**
+16. **Only including the following 5 jump instructions - JMP, JEQ, JNE, JLT, JGE:** JLT and JGE are required by bubble sort's ordering comparison (`arr[i] > arr[i+1]`); JEQ/JNE cover equality-based loop termination; JMP is required for unconditional control transfer (such as skipping parts of an if-statement) that no conditional jump can express regardless of flag state. Additional conditions (JLE, JGT) were deliberately not added as no test program requires them. **(Section 5)**
+
+17. **Stack pointer omitted:** none of the three test programs require function calls, subroutines, or nested returns as currently scoped. Can be added if the ISA were extended to support subroutine calls. **(Section 2)**
 
 ---
 
