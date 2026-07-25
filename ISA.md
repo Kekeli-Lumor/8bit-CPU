@@ -60,6 +60,17 @@ Uses all 16 bits with zero waste.
 
 **Base + offset instead of simple register-indirect:** A standard register indirect format leaves 5 bits unused in the indirect-type instruction. Rather than leaving them reserved, they're used as a signed offset, enabling `LOAD Rd, [Rs + offset]` instead of just `LOAD Rd, [Rs]`. This directly supports bubble sort, which needs to compare adjacent array elements (`arr[i]`, `arr[i+1]`). An offset field allows for two LOADs with offsets 0 and +1 against a single base register, rather than recomputing the address with a separate ADD every iteration.
 
+### Jump-type (PC-relative jump, e.g. JEQ offset)
+```
+[15:11] opcode   (5 bits)
+[10:8]  unused   (3 bits)
+[7:0]   offset   (8 bits, signed two's complement, PC-relative)
+```
+Reuses I-type's physical bit layout exactly (the "destination register" field is simply unused, following the same degenerate-reuse pattern as HALT and MOV) rather than introducing a fourth format. The offset counts in instruction-units, not bytes - the decoder computes `new PC = current PC + (offset * 2)` since each instruction occupies 2 bytes. Counting in instruction-units rather than raw bytes doubles the effective jump range for the same 8 bits.
+ 
+**Why PC-relative instead of absolute jump target:** an absolute target would need 16 bits to address the full 64KB memory space. This doesn't fit alongside a 5-bit opcode in a 16-bit instruction.
+ 
+
 ---
 
 ## 4. Addressing Modes
@@ -76,8 +87,6 @@ Uses all 16 bits with zero waste.
 
 ## 5. Instruction Set Table
 
-*TBD — to be filled in as opcodes are assigned. Table format:*
-
 | Mnemonic | Opcode (5-bit) | Format | Description |
 |---|---|---|---|
 | ADD | `00000` | R-type | Rd = Rs1 + Rs2 |
@@ -88,27 +97,64 @@ Uses all 16 bits with zero waste.
 | ADDI | `01001` | I-type (destination doubles as source) | Rd = Rd + immediate |
 | LOAD | `10000` | Indirect-type | Rd = memory[Rs + offset] |
 | STORE | `10001` | Indirect-type | memory[Rs + offset] = Rd |
-| *(reserved)* | `00100`–`00111` | R-type range | Reserved for future R-type ops |
+| JMP | `10010` | Jump-type | PC = PC + (offset × 2), unconditional |
+| JEQ | `10011` | Jump-type | if Z == 1: PC = PC + (offset × 2) |
+| JNE | `10100` | Jump-type | if Z == 0: PC = PC + (offset × 2) |
+| JLT | `10101` | Jump-type | if (N XOR V) == 1: PC = PC + (offset × 2) - signed less-than |
+| JGE | `10110` | Jump-type | if (N XOR V) == 0: PC = PC + (offset × 2) - signed greater-or-equal |
+| *(reserved)* | `00100`–`00111` | R-type range | Reserved for future R-type ops (e.g. bitwise logic, if extended later) |
 | *(reserved)* | `01010`–`01111` | I-type range | Reserved for future I-type ops |
-| *(reserved)* | `10010`–`11111` | Indirect-type / branch range | Reserved for jump/branch instructions once flags are designed |
+| *(reserved)* | `10111`–`11111` | Jump-type range | Reserved for future jump conditions (e.g. JLE, JGT) if extended |
 
 ---
 
 ## 6. Flags / Status Register
+ 
+A dedicated 4-bit register will be used to represent the status of the flag variables as opposed to any of the 8 general purpose registers.
 
-*TBD — depends on which ALU operations need to set which flags (zero, carry,
-negative, overflow), and how conditional branch instructions will test flag
-state. To be designed after the opcode table, since branch instruction
-encoding depends on both the available opcode space and the flag design.*
+```
+Bit 3: Z (Zero)
+Bit 2: N (Negative)
+Bit 1: C (Carry)
+Bit 0: V (Overflow)
+```
+ 
+### Flag definitions:
+ 
+- **Z (Zero):** set if the instruction's result equals 0. Needed for loop termination and equality checks (`while`, `if a == b`) across all three test programs.
 
+- **N (Negative):** set if bit 7 (the sign bit) of the result is 1. Required for ordering comparisons: bubble sort's `arr[i] > arr[i+1]` is implemented as `SUB` followed by testing N (and Z, for the equal case).
+
+- **C (Carry):** set if an addition's **unsigned** interpretation overflows 8 bits, or equivalently for subtraction, if a borrow occurred. Essentially detects unsigned wraparound.
+
+- **V (Overflow):** set if a **signed** operation produces a result outside the representable signed range (-128 to 127) - specifically, when both operands share a sign and the result's sign differs from theirs. Essentially detects signed wraparound: applies to factorial program, which exceeds 8-bit range quickly (6! = 720) and would otherwise silently wrap to an incorrect value with no indication anything went wrong.
+
+**Why all four flags were included, not just Z/N:** Although only flags Z and N were strictly required for the test programs to function correctly, flags C and V were also included to verify that arithmetic operations were occurring correctly, not necessarily add new capability. This is particularly applicable to the factorial program for the reason given in the overflow section.
+ 
+### Which instructions set flags
+ 
+- **ADD, SUB, ADDI** - all four flags updated based on the result.
+- **LOADI, MOV, LOAD, STORE, HALT** - flags unchanged as these operations don't compute an arithmetic result where the meaning can be stored in the flags.
+
+### Set logic (ADD Rd, Rs1, Rs2)
+ 
+- `Z = 1` if result == 0
+- `N = 1` if bit 7 of result == 1
+- `C = 1` if `(unsigned)Rs1 + (unsigned)Rs2 > 255` (computed using a widened intermediate before truncating to 8 bits)
+- `V = 1` if Rs1 and Rs2 have the same sign **and** the result's sign differs from theirs (same-sign operands produces a different-sign result)
+
+### Set logic (SUB Rd, Rs1, Rs2)
+ 
+Implemented internally as `Rs1 + (~Rs2 + 1)` meaning the addition of Rs1 and the two's-complement negation of Rs2. This mirrors real ALU design, where a single adder circuit handles both addition and subtraction via a negate control line, rather than requiring separate hardware. C and V reuse the exact same logic as ADD, applied to this negated form.
+ 
 ---
+
 
 ## 7. Design Decisions Log
 
 This is a running log of decisions in the order that they were made, with the alternative considered and the constraint that forced the choice. Relevant sections can be referred to fo more detailed reasoning. 
 
 1. **Fixed-length 16-bit instructions** used instead of variable-length: simpler to decode and more appropriate for first custom ISA. **(Section 1)**
-
 
 2. **8 general-purpose registers with 3 bit addressing** over 16: bit budget doesn't support 16 registers in a 3-operand R-type format. **(Section 2)**
 
@@ -129,6 +175,14 @@ This is a running log of decisions in the order that they were made, with the al
 10. **HALT and MOV treated as degenerate R-type instructions** rather than introducing a fourth zero/one-operand format: keeps the decoder handling only three instruction shapes. **(Section 5)**
 
 11. **Opcodes grouped by format** (`000xx`=R-type, `010xx`=I-type, `10xxx`= Indirect-type/branch) rather than assigned sequentially, so the opcode's high bits alone can indicate instruction format before full decode. **(Section 5)**
+
+13. **Jump-type reuses I-type's physical layout** rather than a dedicated fourth format: same degenerate-reuse pattern as HALT/MOV, minimizes decoder complexity. **(Section 3)**
+
+14. **PC-relative jumping, offset counted in instruction-units (not bytes):** an absolute jump target needs 16 bits and doesn't fit the instruction budget. Counting the 8-bit offset in instruction-units rather than bytes doubles effective jump range. **(Section 3)**
+
+15. **JLT/JGE use the fully correct N XOR V signed-comparison test**, not the simpler N-alone approximation: chosen for correctness even though the current test programs' value ranges wouldn't have exposed the edge case where N alone gives a wrong answer **(Section 6)**
+
+16. **Only including the following 5 jump instructions - JMP, JEQ, JNE, JLT, JGE:** JLT andJGE are required by bubble sort's ordering comparison (`arr[i] > arr[i+1]`); JEQ/JNE cover equality-based loop termination; JMP is required for unconditional control transfer (such as skipping parts of an if-statement) that no conditional jump can express regardless of flag state. Additional conditions (JLE, JGT) were deliberately not added as no test program requires them. **(Section 5)**
 
 ---
 
