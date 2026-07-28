@@ -88,7 +88,9 @@ Reuses I-type's physical bit layout exactly (the "destination register" field is
 | Register-direct | `ADD Rd, Rs1, Rs2` | Operands are values held in registers |
 | Register-indirect (base+offset) | `LOAD Rd, [Rs + offset]` | Operand is in memory, at address = value in Rs plus signed offset |
 
-**Exclusion of absolute/direct addressing:** A direct-addressing instruction requires enough bits to encode a full memory address (16 bits for a 64KB address space), which doesn't fit inside a 16-bit instruction alongside an opcode and destination register. To implement this, the addressable range would need to be shrunk (zero-page style) or a variable-length instruction format would be required. It was also unnecessary as any direct address access is already expressible with `LOADI Rn, addr` followed by `LOAD Rd, [Rn]`, whilst only requiring one extra instruction. Since no planned test program requires direct addressing, the extra complexity wasn't justified.
+**Exclusion of absolute/direct addressing:** A direct-addressing instruction requires enough bits to encode a full memory address (16 bits for a 64KB address space), which doesn't fit inside a 16-bit instruction alongside an opcode and destination register. To implement this, the addressable range would need to be shrunk (zero-page style) or a variable-length instruction format would be required.
+
+**Effective addressable range for register-indirect addressing:** General-purpose registers are 8 bits wide, so a register used as the base address in `LOAD`/`STORE` can only hold a value 0–255. Therefore a full 16 bit address can't be represented. Combined with the ±16 signed offset, register-indirect addressing can reach approximately addresses 0–270 of the full 64KB space.This is a direct consequence of register width, and the limitation was accepted rather than resolved (e.g. with 16-bit register pairing) because none of the three test programs (fibonacci, factorial, bubble sort) require data or arrays stored beyond this range, and register pairing would add real implementation and decode complexity without a driving requirement. `LOADI Rn, addr` followed by `LOAD Rd, [Rn]` doesn't provide a general workaround for this, since `LOADI` only populates an 8-bit register and cannot hold a full 16-bit address either. This substitute was originally the reason for omitting direct addressing, however the final justification is that no test program needs memory access outside the reachable range.
 
 ---
 
@@ -194,6 +196,9 @@ This is a running log of decisions in the order that they were made, with the al
 16. **Only including the following 5 jump instructions - JMP, JEQ, JNE, JLT, JGE:** JLT and JGE are required by bubble sort's ordering comparison (`arr[i] > arr[i+1]`); JEQ/JNE cover equality-based loop termination; JMP is required for unconditional control transfer (such as skipping parts of an if-statement) that no conditional jump can express regardless of flag state. Additional conditions (JLE, JGT) were deliberately not added as no test program requires them. **(Section 5)**
 
 17. **Stack pointer omitted:** none of the three test programs require function calls, subroutines, or nested returns as currently scoped. Can be added if the ISA were extended to support subroutine calls. **(Section 2)**
+
+18. **Corrected Section 4's justification for omitting direct addressing.** Originally I thought  `LOADI Rn, addr` + `LOAD Rd, [Rn]` could substitute for direct addressing. This doesn't work as `LOADI` only populates an 8-bit register and cannot hold a full 16-bit address. Therefore register-indirect addressing is structurally limited to roughly addresses 0–270 (8-bit register base + 5-bit signed offset) due to register width rather than a deliberate design choice. I accepted this limitation as of right now since no test program requires data beyond this range. It can be resolved in the future with 16-bit register pairing. **(Section 4)**
+
 
 ---
 
