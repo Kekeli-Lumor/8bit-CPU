@@ -42,8 +42,8 @@ private:
     static constexpr int maxDataAddress = 270; // Register-indirect structural ceiling (ISA.md Section 4 and 8)
 
     std::array<uint8_t, registerNum> registers; // R0-R7, 8-bit each
-    uint16_t programCounter;                       // 16-bit, per ISA.md Section 2
-    uint8_t flags;                                  // Bit 3=Z 2=N 1=C 0=V (ISA.md Section 6)
+    uint16_t programCounter; // 16-bit, per ISA.md Section 2
+    uint8_t flags; // Bit 3=Z 2=N 1=C 0=V (ISA.md Section 6)
     bool halted;
 
     // Internal fetch-decode-execute stages (not yet implemented).
