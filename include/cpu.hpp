@@ -11,8 +11,7 @@
 // so ownership lives in main(), not here. See ISA.md Section 2 for the
 // register file / PC / flags design this class implements.
 //
-// NOTE: this is a skeleton. Fetch/decode/execute contain no real
-// logic yet (done in week 3), once the Memory Model (Week 2) exists.
+
 class CPU {
 public:
     static constexpr size_t registerNum = 8; // R0-R7, per ISA.md Section 2

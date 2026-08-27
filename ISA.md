@@ -1,8 +1,8 @@
-# 8-Bit Custom CPU - Instruction Set Architecture
+ # 8-Bit Custom CPU - Instruction Set Architecture
 
 ## 1. Overview
 
-This is a custom designed 8-bit CPU architecture built for a software emulator project. This ISA is intended to be implemented later on through an FPGA/Verilog hardware implementation. This ISA is designed from scratch rather than copying an existing architecture (eg RISC-V or ARM) in order to experience architectural decision making for myself. 
+This is a custom designed 8-bit CPU architecture built for a software emulator project. This ISA is intended to be implemented later on through an FPGA/Verilog hardware implementation. This ISA is designed from scratch rather than copying an existing architecture (e.g. RISC-V or ARM) in order to experience architectural decision making for myself. 
 
 This ISA is validated against 3 test programs: Fibonacci sequence generation, factorial computation and a standard bubble sort. These effectively show the functionality of the ISA, demonstrating  arithmetic capability, loop-based control flow and memory/array access patterns respectively. The bubble sort in particular influenced the decision to include a signed offset in indirect addressing, spoken about in Section 3.
 
@@ -199,9 +199,35 @@ This is a running log of decisions in the order that they were made, with the al
 
 18. **Corrected Section 4's justification for omitting direct addressing.** Originally I thought  `LOADI Rn, addr` + `LOAD Rd, [Rn]` could substitute for direct addressing. This doesn't work as `LOADI` only populates an 8-bit register and cannot hold a full 16-bit address. Therefore register-indirect addressing is structurally limited to roughly addresses 0–270 (8-bit register base + 5-bit signed offset) due to register width rather than a deliberate design choice. I accepted this limitation as of right now since no test program requires data beyond this range. It can be resolved in the future with 16-bit register pairing. **(Section 4)**
 
+19. **Memory layout separates the structural data ceiling (271 bytes) from actual data usage (30 bytes, once all three test programs were decided to store their results via STORE/LOAD rather than staying register-only):** declaring a fixed data-region size equal to either number would misrepresent one as the other. Instructions were placed starting at `0x0100` rather than immediately after the last used or last reachable data byte, therefore trading 15 bytes of technically reachable data  for round region boundaries. Little-endian was chosen for instruction word storage to match x86/RISC-V convention. **(Section 8)**
+
 
 ---
 
 ## 8. Memory Model
 
-*TBD, Current intention: 64KB, byte-addressable, 16-bit address space.*
+- **Size:** 64KB, byte-addressable, 16-bit address space (0x0000–0xFFFF).
+- **Architecture:** Von Neumann — instructions and data share the same address space rather than separate instruction/data memories. The PC (16-bit) can address the full 64KB for instruction fetch, while register-indirect LOAD/STORE (8-bit base + 5-bit signed offset) can only reach #the first 271 bytes for data.
+- **Endianness:** Little-endian. Since instructions are 16 bits but memory is byte-addressed, fetching an instruction word means reading two consecutive bytes and combining them — little-endian was chosen (low byte at the lower address) to match the convention used by the most common instruction-set families (x86, RISC-V).
+- **PC increment:** +2 per fetch, consistent with 16-bit instructions in byte-addressable memory.
+
+### Structural data ceiling vs. actual data usage
+
+Section 4 established that register-indirect addressing is structurally limited to around addresses 0–270 (271 bytes), due to the 8-bit base register and 5-bit signed offset. This is the **ceiling**: the maximum data range the ISA can ever reach with its current addressing mode.
+
+Separately, the **actual data usage** of the three test programs was calculated by deciding that each program stores its results into memory (exercising STORE/LOAD, rather than staying register-only):
+
+| Program | What's stored | Bytes | Reasoning |
+|---|---|---|---|
+| Fibonacci | Full sequence, fib(0) to fib(13) | 14 | fib(14) = 377 overflows the 8-bit register, so the sequence is capped at fib(13) = 233 |
+| Factorial | Full table, 0! to 5! | 6 | 6! = 720 overflows 8 bits, so the table is capped at 5! = 120 |
+| Bubble sort | Array to be sorted | 10 | Free choice, not a constraint — sized to be large enough to show multiple passes/swaps, small enough to trace by hand. |
+| **Total** | | **30** | |
+
+30 bytes is well within the 271-byte structural ceiling, with a good amount of headroom (241 bytes) unused. 
+
+### Memory layout
+
+- **Data region:** starts at `0x0000`. No fixed size is declared — usage is ~30 bytes in practice, structurally bounded at 271 bytes. The unused space between actual usage and the structural ceiling is left available (e.g. for extending a test program later).
+- **Instruction region:** starts at `0x0100` (256 decimal). This was chosen over starting immediately at address 271 (the first byte past the structural ceiling) for two reasons: 256 is word-aligned for instruction fetch (PC increments by 2, and an even start address keeps every subsequent instruction address even too), and it leaves a clean, round boundary between the two regions rather than an odd one-byte-past-the-limit boundary. The 256–270 byte range is technically inside the addressable-by-register-indirect ceiling but is reserved as instruction space and not used for data — this is a deliberate trade-off (15 bytes of otherwise-reachable data range given up) in exchange for a clean, easy-to-reason-about split.
+- Programs (instructions) occupy `0x0100` onward; with three small test programs (well under a few hundred bytes combined), this leaves the majority of the 64KB space unused.
