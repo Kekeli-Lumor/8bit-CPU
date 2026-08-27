@@ -10,7 +10,6 @@
 // Memory are distinct components (as in real hardware, connected by a bus),
 // so ownership lives in main(), not here. See ISA.md Section 2 for the
 // register file / PC / flags design this class implements.
-//
 
 class CPU {
 public:
@@ -28,6 +27,15 @@ public:
     void run();
 
     bool isHalted() const;
+
+    // Getter for values in register R0-R7, for testing.
+    uint8_t getRegister(uint8_t index) const;
+
+    // Getters for individual flag bits, for testing.
+    bool getZeroFlag() const;
+    bool getNegativeFlag() const;
+    bool getCarryFlag() const;
+    bool getOverflowFlag() const;
 
 private:
     Memory& memory;
