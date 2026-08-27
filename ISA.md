@@ -201,13 +201,15 @@ This is a running log of decisions in the order that they were made, with the al
 
 19. **Memory layout separates the structural data ceiling (271 bytes) from actual data usage (30 bytes, once all three test programs were decided to store their results via STORE/LOAD rather than staying register-only):** declaring a fixed data-region size equal to either number would misrepresent one as the other. Instructions were placed starting at `0x0100` rather than immediately after the last used or last reachable data byte, therefore trading 15 bytes of technically reachable data  for round region boundaries. Little-endian was chosen for instruction word storage to match x86/RISC-V convention. **(Section 8)**
 
+20. **Testing was centred around highest risk instructions rather than done equally across all 13:** ADD, ADDI and SUB had full results and flag verification tests completed. LOAD and STORE were tested with positive and negative offsets to ensure appropriate sign extension. JLT and JGE had extensive testing since they are logically the most complex instruction. JMP, JEQ and JNE didn't receive dedicated testing as their logic was simpler. **(Section 5)**
+
 
 ---
 
 ## 8. Memory Model
 
 - **Size:** 64KB, byte-addressable, 16-bit address space (0x0000–0xFFFF).
-- **Architecture:** Von Neumann — instructions and data share the same address space rather than separate instruction/data memories. The PC (16-bit) can address the full 64KB for instruction fetch, while register-indirect LOAD/STORE (8-bit base + 5-bit signed offset) can only reach #the first 271 bytes for data.
+- **Architecture:** Von Neumann — instructions and data share the same address space rather than separate instruction/data memories. The PC (16-bit) can address the full 64KB for instruction fetch, while register-indirect LOAD/STORE (8-bit base + 5-bit signed offset) can only reach the first 271 bytes for data.
 - **Endianness:** Little-endian. Since instructions are 16 bits but memory is byte-addressed, fetching an instruction word means reading two consecutive bytes and combining them — little-endian was chosen (low byte at the lower address) to match the convention used by the most common instruction-set families (x86, RISC-V).
 - **PC increment:** +2 per fetch, consistent with 16-bit instructions in byte-addressable memory.
 

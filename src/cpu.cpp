@@ -15,13 +15,11 @@ void CPU::reset() {
 }
 
 void CPU::step() {
-    // TODO (Week 3): fetch, decode, execute one instruction.
     uint16_t instruction = fetchInstruction();
     decodeAndExecute(instruction);
 }
 
 void CPU::run() {
-    // TODO (Week 3): loop step() until halted becomes true.
     while (!halted) {
         step();
     }
@@ -109,6 +107,27 @@ void CPU::decodeAndExecute(uint16_t instruction) {
 
         flags = (zFlag << 3) | (nFlag << 2) | (cFlag << 1) | vFlag;
 
+    } else if (opcode == 0b01001) {
+        // ADDI Rd, imm. Sets Rd = Rd + immediate, updates flags (same logic as ADD)
+        uint8_t immediate = instruction & 0xFF;
+
+        uint8_t a = registers[dest];
+        uint8_t b = immediate;
+        uint16_t widenedResult = static_cast<uint16_t>(a) + static_cast<uint16_t>(b);
+        uint8_t result = static_cast<uint8_t>(widenedResult);
+
+        registers[dest] = result;
+
+        bool zFlag = (result == 0);
+        bool nFlag = (result & 0x80) != 0;
+        bool cFlag = (widenedResult > 255);
+
+        bool signA = (a & 0x80) != 0;
+        bool signB = (b & 0x80) != 0;
+        bool vFlag = (signA == signB) && ((result & 0x80) != 0) != signA;
+
+        flags = (zFlag << 3) | (nFlag << 2) | (cFlag << 1) | vFlag;
+
     } else if (opcode == 0b00001) {
         // SUB Rd, Rs1, Rs2. Sets Rd = Rs1 - Rs2 and updates flags
         uint8_t src1 = (instruction >> 5) & 0x7;
@@ -138,12 +157,72 @@ void CPU::decodeAndExecute(uint16_t instruction) {
         bool vFlag = (signA == signB) && (signResult != signA);
 
         flags = (zFlag << 3) | (nFlag << 2) | (cFlag << 1) | vFlag;
-    }
 
-    
-    
-    else{
-        // Other instructions not implemented yes. Halted for now
+    } else if (opcode == 0b10000) {
+        // LOAD Rd, [Rs + offset]. Sets Rd = memory[Rs + offset]
+        uint8_t srcAddr = (instruction >> 5) & 0x7;
+        uint8_t offset = instruction & 0x1F;
+        int8_t signExtendedOffset = static_cast<int8_t>(offset << 3) >> 3;
+
+        int address = static_cast<int>(registers[srcAddr]) + signExtendedOffset;
+        assert(address >= 0 && address <= maxDataAddress && "LOAD address out of the 0-270 data range");
+
+        registers[dest] = memory.readByte(static_cast<uint16_t>(address));
+
+    } else if (opcode == 0b10001) {
+        // STORE Rd, [Rs + offset]. Sets memory[Rs + offset] = Rd 
+        uint8_t srcAddr = (instruction >> 5) & 0x7;
+        uint8_t offset = instruction & 0x1F;
+        int8_t signExtendedOffset = static_cast<int8_t>(offset << 3) >> 3;
+
+        int address = static_cast<int>(registers[srcAddr]) + signExtendedOffset;
+        assert(address >= 0 && address <= maxDataAddress && "STORE address out of the 0-270 data range");
+
+        memory.writeByte(static_cast<uint16_t>(address), registers[dest]);
+
+    } else if (opcode == 0b10010) {
+        // JMP with offset:  PC = PC + (offset * 2). Unconditional jump
+        uint8_t offset = instruction & 0xFF;
+        int8_t signedOffset = static_cast<int8_t>(offset); // This line make the 8 bit offset signed (converts between unsigned and signed value)
+        programCounter = static_cast<uint16_t>(static_cast<int>(programCounter) + signedOffset * 2);
+
+    } else if (opcode == 0b10011) {
+        // JEQ with offset: if Z == 1 then PC = PC + (offset * 2)
+        uint8_t offset = instruction & 0xFF;
+        int8_t signedOffset = static_cast<int8_t>(offset); // This line make the 8 bit offset signed (converts between unsigned and signed value)
+        if(getZeroFlag()){
+            programCounter = static_cast<uint16_t>(static_cast<int>(programCounter) + signedOffset * 2);
+        }
+        
+    } else if (opcode == 0b10100) {
+        // JNE with offset: if Z == 0 then PC = PC + (offset * 2)
+        uint8_t offset = instruction & 0xFF;
+        int8_t signedOffset = static_cast<int8_t>(offset); // This line make the 8 bit offset signed (converts between unsigned and signed value)
+        if(!getZeroFlag()){
+            programCounter = static_cast<uint16_t>(static_cast<int>(programCounter) + signedOffset * 2);
+        }
+        
+    } else if (opcode == 0b10101) {
+        // JLT offset: if (N XOR V) == 1, PC = PC + (offset * 2). Implementing signed less than
+        uint8_t offset = instruction & 0xFF;
+        int8_t signedOffset = static_cast<int8_t>(offset);
+        if (getNegativeFlag() ^ getOverflowFlag()) { 
+            programCounter = static_cast<uint16_t>(static_cast<int>(programCounter) + signedOffset * 2);
+        }
+
+    } else if (opcode == 0b10110) {
+        // JGE offset: if (N XOR V) == 0, PC = PC + (offset * 2). Implementing signed greater than or equal to
+        uint8_t offset = instruction & 0xFF;
+        int8_t signedOffset = static_cast<int8_t>(offset);
+        if (!(getNegativeFlag() ^ getOverflowFlag())) { 
+            programCounter = static_cast<uint16_t>(static_cast<int>(programCounter) + signedOffset * 2);
+        }
+
+    } else{
+        // Invalid or unimplemented opcode instruction
+        // Just halted to be safe
         halted = true;
     }
+    
+    
 }

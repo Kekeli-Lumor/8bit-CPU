@@ -10,6 +10,7 @@
 class Memory {
 public:
     static constexpr size_t memorySize = 65536; // 64KB
+    
 
     Memory();
 
@@ -30,4 +31,5 @@ public:
 
 private:
     std::array<uint8_t, memorySize> memoryData;
+    
 };
