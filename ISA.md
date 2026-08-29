@@ -203,6 +203,8 @@ This is a running log of decisions in the order that they were made, with the al
 
 20. **Testing was centred around highest risk instructions rather than done equally across all 13:** ADD, ADDI and SUB had full results and flag verification tests completed. LOAD and STORE were tested with positive and negative offsets to ensure appropriate sign extension. JLT and JGE had extensive testing since they are logically the most complex instruction. JMP, JEQ and JNE didn't receive dedicated testing as their logic was simpler. **(Section 5)**
 
+21. **All 3 test programs (fibonacci, factorial and bubble sort) implemented and validated:** Both factorial and fibonacci store all their results in memory via an address pointer register that was incremented each outer loop iteration. Bubble sort needed the target address to be computed during runtime before each LOAD and STORE as 2 different offsets were required for `arr[j] and arr[j + 1]`. Loops all use the same SUB then JLT logic pattern (exit when `bound - counter` is negative). Bubble sort uses fixed number of passes rather than an early exit for simplicity. **Section 5**
+
 
 ---
 

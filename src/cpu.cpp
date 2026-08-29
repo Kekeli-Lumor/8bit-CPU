@@ -7,9 +7,9 @@ CPU::CPU(Memory& memoryRef) : memory(memoryRef), programCounter(0), flags(0), ha
     registers.fill(0);
 }
 
-void CPU::reset() {
+void CPU::reset(uint16_t startAddress) {
     registers.fill(0);
-    programCounter = 0;
+    programCounter = startAddress;
     flags = 0;
     halted = false;
 }

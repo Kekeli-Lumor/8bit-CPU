@@ -18,7 +18,9 @@ public:
     explicit CPU(Memory& memoryRef);
 
     // Resets registers, PC, and flags to their initial state.
-    void reset();
+    // startAddress was later added as an argument as it's required to read and write instructions to certain addresses rather than just from 0
+    // default argument used so changed don't have to be made to testing at that point in time
+    void reset(uint16_t startAddress = 0); 
 
     // Executes a single fetch-decode-execute cycle (one instruction).
     void step();
