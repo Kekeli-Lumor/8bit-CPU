@@ -1,0 +1,31 @@
+LOADI R0, 0
+LOADI R3, 15
+STORE R3, R0, 0
+LOADI R3, 5
+STORE R3, R0, 1
+LOADI R3, 7
+STORE R3, R0, 2
+LOADI R3, 1
+STORE R3, R0, 3
+LOADI R3, 3
+STORE R3, R0, 4
+LOADI R1, 0
+OuterLoopStart: LOADI R5, 3
+SUB R7, R5, R1
+JLT OuterDone
+LOADI R2, 0
+InnerLoopStart: LOADI R5, 3
+SUB R7, R5, R2
+JLT InnerDone
+ADD R6, R0, R2
+LOAD R3, R6, 0
+LOAD R4, R6, 1
+SUB R7, R3, R4
+JLT SkipSwap
+STORE R4, R6, 0
+STORE R3, R6, 1
+SkipSwap: ADDI R2, 1
+JMP InnerLoopStart
+InnerDone: ADDI R1, 1
+JMP OuterLoopStart
+OuterDone: HALT

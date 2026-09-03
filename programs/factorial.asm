@@ -1,0 +1,21 @@
+LOADI R1, 1
+LOADI R2, 0
+STORE R1, R2, 0
+ADDI R2, 1
+LOADI R0, 1
+OuterLoopStart: LOADI R5, 5
+SUB R6, R5, R0
+JLT Done
+LOADI R3, 0
+LOADI R4, 1
+InnerLoopStart: SUB R6, R0, R4
+JLT InnerDone
+ADD R3, R3, R1
+ADDI R4, 1
+JMP InnerLoopStart
+InnerDone: MOV R1, R3
+STORE R1, R2, 0
+ADDI R2, 1
+ADDI R0, 1
+JMP OuterLoopStart
+Done: HALT

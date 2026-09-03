@@ -3,8 +3,10 @@
 
 #include "cpu.hpp"
 #include "memory.hpp"
+#include "assembler.hpp"
+#include "programloader.hpp"
 
-//PROGRAM LOADING FUNCTIONS (loads program instructions into memory)
+// PROGRAM LOADING FUNCTIONS (loads program instructions into memory)
 
 // Encodes and loads factorial program from 0! to 5! into memory, starting at 0x0100
 void loadFactorialProgram(Memory& memory) {
@@ -583,7 +585,7 @@ void runFactorialTest(CPU& cpu, Memory& memory) {
     bool allPassed = true;
     for (int i = 0; i < 6; i++) {
         uint8_t val = memory.readByte(static_cast<uint16_t>(i));
-        std::cout << i << "! = " << static_cast<int>(val) << " (expect " << expected[i] << ")\n";
+        std::cout << i << "! = " << static_cast<int>(val) << " (expecting " << expected[i] << ")\n";
         std::cout << (val == expected[i] ? "PASS" : "FAIL") << "\n";
 
         if (val != expected[i]) {
@@ -602,7 +604,7 @@ void runFibonacciTest(CPU& cpu, Memory& memory) {
     bool allFibPassed = true;
     for (int i = 0; i < 14; i++) {
         uint8_t val = memory.readByte(static_cast<uint16_t>(i));
-        std::cout << "fib(" << i << ") = " << static_cast<int>(val) << " (expect " << expectedFib[i] << ")\n";
+        std::cout << "fib(" << i << ") = " << static_cast<int>(val) << " (expecting " << expectedFib[i] << ")\n";
         std::cout << (val == expectedFib[i] ? "PASS" : "FAIL") << "\n";
 
         if (val != expectedFib[i]) {
@@ -621,7 +623,7 @@ void runBubbleSortTest(CPU& cpu, Memory& memory) {
     bool allSortPassed = true;
     for (int i = 0; i < 5; i++) {
         uint8_t val = memory.readByte(static_cast<uint16_t>(i));
-        std::cout << "arr[" << i << "] = " << static_cast<int>(val) << " (expect " << expectedSorted[i] << ")\n";
+        std::cout << "arr[" << i << "] = " << static_cast<int>(val) << " (expecting " << expectedSorted[i] << ")\n";
         std::cout << (val == expectedSorted[i] ? "PASS" : "FAIL") << "\n";
 
         if (val != expectedSorted[i]) {
@@ -630,6 +632,71 @@ void runBubbleSortTest(CPU& cpu, Memory& memory) {
     }
     std::cout << (allSortPassed ? "Bubble sort: all passed\n" : "Bubble sort: check failures above\n");
 }
+
+void runAssembledFactorialTest(CPU& cpu, Memory& memory) {
+    std::vector<std::string> lines = readAsmFile("programs/factorial.asm");
+    std::vector<uint16_t> machineCode = assembleProgram(lines);
+    writeBinFile("programs/factorial.bin", machineCode);
+    loadBinFile("programs/factorial.bin", memory);
+
+    cpu.reset(0x0100);
+    cpu.run();
+
+    int expected[6] = {1, 1, 2, 6, 24, 120};
+    bool allPassed = true;
+    for (int i = 0; i < 6; i++) {
+        uint8_t val = memory.readByte(static_cast<uint16_t>(i));
+        std::cout << i << "! = " << static_cast<int>(val) << " (expecting " << expected[i] << ")\n";
+        std::cout << (val == expected[i] ? "PASS" : "FAIL") << "\n";
+        if (val != expected[i]) allPassed = false;
+    }
+    std::cout << (allPassed ? "Assembled factorial: all passed\n" : "Assembled factorial: check failures above\n");
+}
+
+void runAssembledFibonacciTest(CPU& cpu, Memory& memory) {
+    std::vector<std::string> lines = readAsmFile("programs/fibonacci.asm");
+    std::vector<uint16_t> machineCode = assembleProgram(lines);
+    writeBinFile("programs/fibonacci.bin", machineCode);
+    loadBinFile("programs/fibonacci.bin", memory);
+
+    cpu.reset(0x0100);
+    cpu.run();
+
+    int expectedFib[14] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233};
+    bool allPassed = true;
+    for (int i = 0; i < 14; i++) {
+        uint8_t val = memory.readByte(static_cast<uint16_t>(i));
+        std::cout << "fib(" << i << ") = " << static_cast<int>(val) << " (expecting " << expectedFib[i] << ")\n";
+        std::cout << (val == expectedFib[i] ? "PASS" : "FAIL") << "\n";
+        if (val != expectedFib[i]) allPassed = false;
+    }
+    std::cout << (allPassed ? "Assembled fibonacci: all passed\n" : "Assembled fibonacci: check failures above\n");
+}
+
+void runAssembledBubbleSortTest(CPU& cpu, Memory& memory) {
+    std::vector<std::string> lines = readAsmFile("programs/bubblesort.asm");
+    std::vector<uint16_t> machineCode = assembleProgram(lines);
+    writeBinFile("programs/bubblesort.bin", machineCode);
+    loadBinFile("programs/bubblesort.bin", memory);
+
+    cpu.reset(0x0100);
+    cpu.run();
+
+    int expectedSorted[5] = {1, 3, 5, 7, 15};
+    bool allPassed = true;
+    for (int i = 0; i < 5; i++) {
+        uint8_t val = memory.readByte(static_cast<uint16_t>(i));
+        std::cout << "arr[" << i << "] = " << static_cast<int>(val) << " (expecting " << expectedSorted[i] << ")\n";
+        std::cout << (val == expectedSorted[i] ? "PASS" : "FAIL") << "\n";
+        if (val != expectedSorted[i]) allPassed = false;
+    }
+    std::cout << (allPassed ? "Assembled bubble sort: all passed\n" : "Assembled bubble sort: check failures above\n");
+}
+
+
+
+
+
 
 int main() {
     Memory memory;
@@ -645,7 +712,11 @@ int main() {
     // runInstructionTests(cpu, memory);
     // runFactorialTest(cpu, memory);
     // runFibonacciTest(cpu, memory);
-    runBubbleSortTest(cpu, memory);
+    // runBubbleSortTest(cpu, memory);
+
+    // runAssembledFactorialTest(cpu, memory);
+    // runAssembledFibonacciTest(cpu, memory);
+    runAssembledBubbleSortTest(cpu, memory);
 
     return 0;
 }
