@@ -205,6 +205,8 @@ This is a running log of decisions in the order that they were made, with the al
 
 21. **All 3 test programs (fibonacci, factorial and bubble sort) implemented and validated:** Both factorial and fibonacci store all their results in memory via an address pointer register that was incremented each outer loop iteration. Bubble sort needed the target address to be computed during runtime before each LOAD and STORE as 2 different offsets were required for `arr[j] and arr[j + 1]`. Loops all use the same SUB then JLT logic pattern (exit when `bound - counter` is negative). Bubble sort uses fixed number of passes rather than an early exit for simplicity. **Section 5**
 
+21. **Built two-pass assembler translating assembly into machine code:** Programs validated against the full pipeline (`.asm` file being parsed, translated into a symbol table, encoded, `.bin` file generated, loaded and finally executed). In order to avoid extra parsing complexity indirect addressing uses comma separated operands instead of square brackets: `LOAD Rd, Rs, offset`. Jump instructions only use labels rather than a raw numeric offset for simplicity.  **Section 5**
+
 
 ---
 
