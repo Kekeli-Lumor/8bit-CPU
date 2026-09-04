@@ -12,7 +12,7 @@ This ISA is validated against 3 test programs: Fibonacci sequence generation, fa
 - **Memory:** 64KB, byte-addressable
 - **Philosophy:** RISC-style, fixed length instructions with simple decode and load/store architecture. ALU operations only work on registers. Memory is only accessed using load and store instructions, not ALU operations.
 
-**Fixed length over variable length:** Although variable-length instructions, such as **x86**, allow denser code, it requires a much more complex decoder that has to determine instruction length before it can be parsed. Fixed-length instructions allow every instruction to be decoded in an identical matter regardless of type, resulting in a simple fetch-decode-execute cycle. This decision RISC vs CISC decision in real architectures.
+**Fixed length over variable length:** Although variable-length instructions, such as **x86**, allow denser code, it requires a much more complex decoder that has to determine instruction length before it can be parsed. Fixed-length instructions allow every instruction to be decoded in an identical matter regardless of type, resulting in a simple fetch-decode-execute cycle.
 
 ---
 
@@ -22,9 +22,9 @@ This ISA is validated against 3 test programs: Fibonacci sequence generation, fa
 
 ### Special-purpose registers
  
-- **Program Counter (PC):** 16 bits wide — must be wider than the 8-bit general-purpose registers, since it needs to address the full 64KB memory space. Not part of the 8-register general-purpose file and not addressable by any instruction's register fields. It's updated implicitly by instruction fetch (PC += 2 each cycle, since instructions are 16 bits) and explicitly by jump-type instructions (Section 3).
+- **Program Counter (PC):** 16 bits wide: must be wider than the 8-bit general-purpose registers, since it needs to address the full 64KB memory space. Not part of the 8-register general-purpose file and not addressable by any instruction's register fields. It's updated implicitly by instruction fetch (PC += 2 each cycle, since instructions are 16 bits) and explicitly by jump-type instructions (Section 3).
 
-- **Flags/Status Register:** 4 bits (Z, N, C, V) - fully explained in Section 6. Also not part of the general-purpose register fil. Written implicitly by ADD/SUB/ADDI and read implicitly by conditional jump instructions (JEQ/JNE/JLT/JGE).
+- **Flags/Status Register:** 4 bits (Z, N, C, V) - fully explained in Section 6. Also not part of the general-purpose register file. Written implicitly by ADD/SUB/ADDI and read implicitly by conditional jump instructions (JEQ/JNE/JLT/JGE).
 
 - **Stack Pointer:** Not included as none of the three test programs (fibonacci, factorial, bubble sort) require function calls, subroutines, or nested returns as currently scoped. A stack pointer would be added if the ISA were extended to support subroutine calls.
 
@@ -37,7 +37,7 @@ This ISA is validated against 3 test programs: Fibonacci sequence generation, fa
 
 ## 3. Instruction Format
 
-Each instruction is 16 bits. The fields the non-opcode bits represents are dependent on the instruction type. First, the decoder reads the opcode to determine which of the 4 formats to interpret the rest oc the instruction as. This pattern occurs in real life ISAs, such as MIPS R-type/I-type/J-type (Register, Immediates, Jumps).
+Each instruction is 16 bits. The fields the non-opcode bits represents are dependent on the instruction type. First, the decoder reads the opcode to determine which of the 4 formats to interpret the rest of the instruction as. This pattern occurs in real life ISAs, such as MIPS R-type/I-type/J-type (Register, Immediates, Jumps).
 
 ### R-type (register-direct ALU operations, e.g. ADD Rd, Rs1, Rs2)
 ```
@@ -203,9 +203,9 @@ This is a running log of decisions in the order that they were made, with the al
 
 20. **Testing was centred around highest risk instructions rather than done equally across all 13:** ADD, ADDI and SUB had full results and flag verification tests completed. LOAD and STORE were tested with positive and negative offsets to ensure appropriate sign extension. JLT and JGE had extensive testing since they are logically the most complex instruction. JMP, JEQ and JNE didn't receive dedicated testing as their logic was simpler. **(Section 5)**
 
-21. **All 3 test programs (fibonacci, factorial and bubble sort) implemented and validated:** Both factorial and fibonacci store all their results in memory via an address pointer register that was incremented each outer loop iteration. Bubble sort needed the target address to be computed during runtime before each LOAD and STORE as 2 different offsets were required for `arr[j] and arr[j + 1]`. Loops all use the same SUB then JLT logic pattern (exit when `bound - counter` is negative). Bubble sort uses fixed number of passes rather than an early exit for simplicity. **Section 5**
+21. **All 3 test programs (fibonacci, factorial and bubble sort) implemented and validated:** Both factorial and fibonacci store all their results in memory via an address pointer register that was incremented each outer loop iteration. Bubble sort needed the target address to be computed during runtime before each LOAD and STORE as 2 different offsets were required for `arr[j] and arr[j + 1]`. Loops all use the same SUB then JLT logic pattern (exit when `bound - counter` is negative). Bubble sort uses fixed number of passes rather than an early exit for simplicity. **(Section 5)**
 
-21. **Built two-pass assembler translating assembly into machine code:** Programs validated against the full pipeline (`.asm` file being parsed, translated into a symbol table, encoded, `.bin` file generated, loaded and finally executed). In order to avoid extra parsing complexity indirect addressing uses comma separated operands instead of square brackets: `LOAD Rd, Rs, offset`. Jump instructions only use labels rather than a raw numeric offset for simplicity.  **Section 5**
+22. **Built two-pass assembler translating assembly into machine code:** Programs validated against the full pipeline (`.asm` file being parsed, translated into a symbol table, encoded, `.bin` file generated, loaded and finally executed). In order to avoid extra parsing complexity indirect addressing uses comma separated operands instead of square brackets: `LOAD Rd, Rs, offset`. Jump instructions only use labels rather than a raw numeric offset for simplicity.  **(Section 5)**
 
 
 ---
@@ -213,8 +213,8 @@ This is a running log of decisions in the order that they were made, with the al
 ## 8. Memory Model
 
 - **Size:** 64KB, byte-addressable, 16-bit address space (0x0000–0xFFFF).
-- **Architecture:** Von Neumann — instructions and data share the same address space rather than separate instruction/data memories. The PC (16-bit) can address the full 64KB for instruction fetch, while register-indirect LOAD/STORE (8-bit base + 5-bit signed offset) can only reach the first 271 bytes for data.
-- **Endianness:** Little-endian. Since instructions are 16 bits but memory is byte-addressed, fetching an instruction word means reading two consecutive bytes and combining them — little-endian was chosen (low byte at the lower address) to match the convention used by the most common instruction-set families (x86, RISC-V).
+- **Architecture:** Von Neumann: instructions and data share the same address space rather than separate instruction/data memories. The PC (16-bit) can address the full 64KB for instruction fetch, while register-indirect LOAD/STORE (8-bit base + 5-bit signed offset) can only reach the first 271 bytes for data.
+- **Endianness:** Little-endian. Since instructions are 16 bits but memory is byte-addressed, fetching an instruction word means reading two consecutive bytes and combining them. Little-endian was chosen (low byte at the lower address) to match the convention used by the most common instruction-set families (x86, RISC-V).
 - **PC increment:** +2 per fetch, consistent with 16-bit instructions in byte-addressable memory.
 
 ### Structural data ceiling vs. actual data usage
@@ -227,13 +227,13 @@ Separately, the **actual data usage** of the three test programs was calculated 
 |---|---|---|---|
 | Fibonacci | Full sequence, fib(0) to fib(13) | 14 | fib(14) = 377 overflows the 8-bit register, so the sequence is capped at fib(13) = 233 |
 | Factorial | Full table, 0! to 5! | 6 | 6! = 720 overflows 8 bits, so the table is capped at 5! = 120 |
-| Bubble sort | Array to be sorted | 10 | Free choice, not a constraint — sized to be large enough to show multiple passes/swaps, small enough to trace by hand. |
+| Bubble sort | Array to be sorted | 10 | Free choice, not a constraint. Sized to be large enough to show multiple passes/swaps, small enough to trace by hand. |
 | **Total** | | **30** | |
 
 30 bytes is well within the 271-byte structural ceiling, with a good amount of headroom (241 bytes) unused. 
 
 ### Memory layout
 
-- **Data region:** starts at `0x0000`. No fixed size is declared — usage is ~30 bytes in practice, structurally bounded at 271 bytes. The unused space between actual usage and the structural ceiling is left available (e.g. for extending a test program later).
-- **Instruction region:** starts at `0x0100` (256 decimal). This was chosen over starting immediately at address 271 (the first byte past the structural ceiling) for two reasons: 256 is word-aligned for instruction fetch (PC increments by 2, and an even start address keeps every subsequent instruction address even too), and it leaves a clean, round boundary between the two regions rather than an odd one-byte-past-the-limit boundary. The 256–270 byte range is technically inside the addressable-by-register-indirect ceiling but is reserved as instruction space and not used for data — this is a deliberate trade-off (15 bytes of otherwise-reachable data range given up) in exchange for a clean, easy-to-reason-about split.
+- **Data region:** starts at `0x0000`. No fixed size is declared. Usage is ~30 bytes in practice, structurally bounded at 271 bytes. The unused space between actual usage and the structural ceiling is left available (e.g. for extending a test program later).
+- **Instruction region:** starts at `0x0100` (256 decimal). This was chosen over starting immediately at address 271 (the first byte past the structural ceiling) for two reasons: 256 is word-aligned for instruction fetch (PC increments by 2, and an even start address keeps every subsequent instruction address even too), and it leaves a clean, round boundary between the two regions rather than an odd one-byte-past-the-limit boundary. The 256–270 byte range is technically inside the addressable-by-register-indirect ceiling but is reserved as instruction space and not used for data. This is a deliberate trade-off (15 bytes of otherwise-reachable data range given up) in exchange for a clean, easy-to-reason-about split.
 - Programs (instructions) occupy `0x0100` onward; with three small test programs (well under a few hundred bytes combined), this leaves the majority of the 64KB space unused.
