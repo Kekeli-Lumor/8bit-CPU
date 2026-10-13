@@ -155,6 +155,7 @@ Bit 0: V (Overflow)
 ### Set logic (SUB Rd, Rs1, Rs2)
 
 Implemented internally as `Rs1 + (~Rs2 + 1)` meaning the addition of Rs1 and the two's-complement negation of Rs2. This mirrors real ALU design, where a single adder circuit handles both addition and subtraction via a negate control line, rather than requiring separate hardware. C is the inverse of the adder’s carry-out, which is a borrow. V uses ADD’s sign rule applied to Rs1 and ~Rs2.
+
 ---
 
 
