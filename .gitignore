@@ -78,4 +78,5 @@ Testing/
 *.str
 *.dcp
 *.bit
+*.cache/
 .Xil/
