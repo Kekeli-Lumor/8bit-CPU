@@ -68,3 +68,14 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Vivado generated files
+*.runs/
+*.sim/
+*.hw/
+*.ip_user_files/
+*.jou
+*.str
+*.dcp
+*.bit
+.Xil/
