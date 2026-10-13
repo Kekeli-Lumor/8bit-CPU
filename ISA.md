@@ -138,7 +138,7 @@ Bit 0: V (Overflow)
 
 - **V (Overflow):** set if a **signed** operation produces a result outside the representable signed range (-128 to 127) - specifically, when both operands share a sign and the result's sign differs from theirs. Essentially detects signed wraparound: applies to factorial program, which exceeds 8-bit range quickly (6! = 720) and would otherwise silently wrap to an incorrect value with no indication anything went wrong.
 
-**Why all four flags were included, not just Z/N:** Although only flags Z and N were strictly required for the test programs to function correctly, flags C and V were also included to verify that arithmetic operations were occurring correctly, not necessarily add new capability. This is particularly applicable to the factorial program for the reason given in the overflow section.
+**Why all four flags were included, not just Z/N:** Although only flags Z and N were strictly required for the test programs to function correctly, flags C and V were also included to verify that arithmetic operations were occurring correctly, not necessarily to add new capability. This is particularly applicable to the factorial program for the reason given in the overflow section.
  
 ### Which instructions set flags
  
@@ -154,8 +154,7 @@ Bit 0: V (Overflow)
 
 ### Set logic (SUB Rd, Rs1, Rs2)
  
-Implemented internally as `Rs1 + (~Rs2 + 1)` meaning the addition of Rs1 and the two's-complement negation of Rs2. This mirrors real ALU design, where a single adder circuit handles both addition and subtraction via a negate control line, rather than requiring separate hardware. C and V reuse the exact same logic as ADD, applied to this negated form.
- 
+Implemented internally as `Rs1 + (~Rs2 + 1)` meaning the addition of Rs1 and the two's-complement negation of Rs2. This mirrors real ALU design, where a single adder circuit handles both addition and subtraction via a negate control line, rather than requiring separate hardware. C is the inverse of the adder’s carry-out, which is a borrow. V uses ADD’s sign rule applied to Rs1 and ~Rs2.
 ---
 
 
