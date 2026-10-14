@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-This is a custom designed 8-bit CPU architecture built for a software emulator project. This ISA is intended to be implemented later on through an FPGA/Verilog hardware implementation. This ISA is designed from scratch rather than copying an existing architecture (e.g. RISC-V or ARM) in order to experience architectural decision making for myself. 
+This is a custom designed 8-bit CPU architecture built for a software emulator project. A subset of the ISA (ADD, SUB, LOADI, ADDI, HALT) was ported to an FPGA using SystemVerilog. This ISA is designed from scratch rather than copying an existing architecture (e.g. RISC-V or ARM) in order to experience architectural decision making for myself. 
 
 This ISA is validated against 3 test programs: Fibonacci sequence generation, factorial computation and a standard bubble sort. These effectively show the functionality of the ISA, demonstrating  arithmetic capability, loop-based control flow and memory/array access patterns respectively. The bubble sort in particular influenced the decision to include a signed offset in indirect addressing, spoken about in Section 3.
 
@@ -29,7 +29,7 @@ This ISA is validated against 3 test programs: Fibonacci sequence generation, fa
 - **Stack Pointer:** Not included as none of the three test programs (fibonacci, factorial, bubble sort) require function calls, subroutines, or nested returns as currently scoped. A stack pointer would be added if the ISA were extended to support subroutine calls.
 
 ### Rejected alternatives
-- **16 registers:** With a 3-operand R type format (destination, source1, source2), 16 registers require 4 bits x 3 = 12 bits for just the register fields. In conjunction with 5-bit opcodes, there would be 0 bits remaining for addressing modes or immediates, meaning instructions won't fit in the 16 bit budget. 8 registers require 3 bits x 3 = 9 bits, leaving space for opcode and other fields to comfortably fit.
+- **16 registers:** With a 3-operand R type format (destination, source1, source2), 16 registers require 4 bits x 3 = 12 bits for just the register fields. In conjunction with 5-bit opcodes, that's 17 bits, which exceeds the 16-bit budget. 8 registers require 3 bits x 3 = 9 bits, leaving space for opcode and other fields to comfortably fit.
 
 - **4 registers:** Allows for more bits per instruction, but could result in unnecessary register pressure (frequent spills to memory) for even moderately complicated test programs. Using 8 registers strikes a balance between encoding cost and having enough working registers for fibonacci, factorial and bubble sort without constant memory traffic.
 
@@ -54,7 +54,7 @@ Each instruction is 16 bits. The fields the non-opcode bits represents are depen
 [10:8]  destination       (3 bits)
 [7:0]   immediate         (8 bits, signed two's complement)
 ```
-Uses all 16 bits with zero waste. Immediate width of 8 bits maximises 16 bit instruction length with the opcode length of 5 bits and destination register width 3 bit width. Gives a signed range of -128 to 127, sufficient for loop counters and constants in the planned test programs.
+Uses all 16 bits with zero waste. Immediate width of 8 bits maximises 16-bit instruction length with the opcode length of 5 bits and destination register width 3-bit width. Gives a signed range of -128 to 127, sufficient for loop counters and constants in the planned test programs.
 
 ### Indirect-type (register-indirect memory access with offset, e.g. LOAD Rd, [Rs + offset])
 ```
@@ -73,7 +73,7 @@ Uses all 16 bits with zero waste.
 [10:8]  unused   (3 bits)
 [7:0]   offset   (8 bits, signed two's complement, PC-relative)
 ```
-Reuses I-type's physical bit layout exactly (the "destination register" field is simply unused, following the same degenerate-reuse pattern as HALT and MOV) rather than introducing a fourth format. The offset counts in instruction-units, not bytes - the decoder computes `new PC = current PC + (offset * 2)` since each instruction occupies 2 bytes. Counting in instruction-units rather than raw bytes doubles the effective jump range for the same 8 bits.
+Reuses I-type's physical bit layout exactly (the "destination register" field is simply unused, following the same degenerate-reuse pattern as HALT and MOV) rather than introducing a fourth format. The offset counts in instruction-units, not bytes - the decoder computes `new PC = current PC (already incremented from previous instruction) + (offset * 2)` since each instruction occupies 2 bytes. Counting in instruction-units rather than raw bytes doubles the effective jump range for the same 8 bits.
  
 **Why PC-relative instead of absolute jump target:** an absolute target would need 16 bits to address the full 64KB memory space. This doesn't fit alongside a 5-bit opcode in a 16-bit instruction.
  
@@ -181,7 +181,7 @@ This is a running log of decisions in the order that they were made, with the al
 
 9. **No NOP:** not currently requirement (no pipeline/timing constraints in a pure emulator). Can be added if the project is extended toward hardware timing simulation. **(Section 5)**
 
-10. **HALT and MOV treated as degenerate R-type instructions** rather than introducing a fourth zero/one-operand format: keeps the decoder handling only three instruction shapes. **(Section 5)**
+10. **HALT and MOV treated as degenerate R-type instructions** rather than introducing an additional zero/one-operand format: keeps the decoder handling only three distinct instruction shapes. **(Section 5)**
 
 11. **ADDI added late, after discovering the gap:** initial instruction list had no way to do register-immediate arithmetic (e.g. loop increment/decrement) or register-to-register copy (MOV). These are the most frequently executed operations across all three test programs (every loop iteration needs increment/decrement), so they were added once I realised they were required. **(Section 5)**
 
